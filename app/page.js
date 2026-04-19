@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../lib/supabase";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 
