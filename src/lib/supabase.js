@@ -1,15 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-// ตรวจสอบความพร้อมของกุญแจก่อนเริ่มงาน
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("❌ ข้อมูลใน .env.local ไม่ครบถ้วน!");
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false, // ปิดการเก็บ Session ถ้าเราแค่ทำ Dashboard เพื่อให้เว็บเบาขึ้น
-  },
-});
+import { completeHardNavigation } from "next/dist/client/components/segment-cache/navigation";
+// ดึง key จากไฟล์ .env.local
+const supabaseUlr = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonkey = process.env.NEXT_PUBLIC_SUPABASE_URL_ANON_KEY;
+// ตัาเชื่อม Client เพื่อเอาใช้หน้าอื่นๆ
+export const supabase = createClient(supabaseUlr, supabaseUlr);
