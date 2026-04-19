@@ -4,7 +4,23 @@ import { supabase } from "../lib/supabase";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 
-// โหลดแผนที่แบบ Smooth พร้อมหน้าจอ Loading
+// ส่วนที่เพิ่มเข้ามา: ฟังก์ชันสร้าง Icon สีต่างๆ 
+const L = typeof window !== "undefined" ? require("leaflet") : null;
+
+const createIcon = (color) => {
+  if (!L) return null;
+  return new L.Icon({
+    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
+    shadowUrl:
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  });
+};
+
+// โหลดแผนที่แบบ Dynamic
 const MapContainer = dynamic(
   () => import("react-leaflet").then((m) => m.MapContainer),
   {
@@ -30,7 +46,6 @@ const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), {
 export default function Home() {
   const [sensors, setSensors] = useState([]);
 
-  // ใช้ useCallback เพื่อให้ฟังก์ชันเสถียร ไม่ถูกสร้างใหม่บ่อยๆ
   const sendLineAlert = useCallback(async (name, temp) => {
     try {
       await fetch("/api/alert", {
@@ -52,19 +67,15 @@ export default function Home() {
   useEffect(() => {
     fetchSensors();
 
-    // ระบบ Real-time
     const channel = supabase
       .channel("db-changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "sensors" },
         (payload) => {
-          // ถ้ามีการแก้ไขข้อมูล
           if (payload.eventType === "UPDATE") {
             const newData = payload.new;
             const oldData = payload.old;
-
-            // ตรวจสอบว่าอุณหภูมิเพิ่งจะ "ข้ามขีดจำกัด" หรือไม่ (เพื่อไม่ให้ส่ง LINE ซ้ำรัวๆ)
             if (
               (newData.temp > 40 && oldData.temp <= 40) ||
               (newData.status === "fire" && oldData.status !== "fire")
@@ -77,7 +88,6 @@ export default function Home() {
       )
       .subscribe();
 
-    //  ล้างการเชื่อมต่อเมื่อปิดหน้าเว็บ (สำคัญมากต่อความเสถียร)
     return () => {
       supabase.removeChannel(channel);
     };
@@ -96,11 +106,10 @@ export default function Home() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* ส่วนแผนที่ (กินพื้นที่ 3 ใน 4) */}
           <div className="lg:col-span-3 h-[600px] rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-slate-800 relative">
             <MapContainer
-              center={[13.9, 100.6]}
-              zoom={11}
+              center={[13.96, 100.58]} // ปรับให้ใกล้ RSU มากขึ้น
+              zoom={12}
               style={{ height: "100%", width: "100%" }}
             >
               <TileLayer
@@ -109,7 +118,11 @@ export default function Home() {
               />
 
               {sensors.map((sensor) => (
-                <Marker key={sensor.id} position={[sensor.lat, sensor.lng]}>
+                <Marker
+                  key={sensor.id}
+                  position={[sensor.lat, sensor.lng]}
+                  icon={createIcon(sensor.temp > 40 ? "red" : "green")} // จุดที่เพิ่ม เปลี่ยนสีหมุด
+                >
                   <Popup>
                     <div className="text-slate-900 p-2 min-w-[150px]">
                       <h3 className="font-bold text-lg border-b pb-1 mb-2 text-slate-800">
@@ -123,14 +136,6 @@ export default function Home() {
                           {sensor.temp}°C
                         </span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span>สถานะ:</span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-xs text-white ${sensor.status === "fire" ? "bg-red-500" : "bg-green-500"}`}
-                        >
-                          {sensor.status === "fire" ? "🔥 FIRE" : "NORMAL"}
-                        </span>
-                      </div>
                     </div>
                   </Popup>
                 </Marker>
@@ -138,7 +143,6 @@ export default function Home() {
             </MapContainer>
           </div>
 
-          {/* ส่วนรายการเซนเซอร์ด้านข้าง (Dashboard Summary) */}
           <div className="lg:col-span-1 bg-slate-900/50 rounded-3xl p-6 border border-slate-800 backdrop-blur-sm">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-orange-400">
               <span className="relative flex h-3 w-3">
@@ -169,14 +173,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-
-        <footer className="mt-8 py-4 border-t border-slate-800 flex justify-between items-center text-slate-500 text-xs uppercase tracking-widest">
-          <span>&copy; 2026 NATTHAWAT FIRE WATCH</span>
-          <span className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]"></div>
-            System Online
-          </span>
-        </footer>
       </div>
     </main>
   );
