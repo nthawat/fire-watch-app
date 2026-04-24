@@ -90,16 +90,23 @@ function Dashboard({ onLogout }) {
   const mapInstanceRef = useRef(null)
   const markersRef = useRef({})
 
-  // ฟังก์ชันเช็คสถานะแบบแก้เรื่อง Timezone (UTC vs Local)
+  // --- ฟังก์ชันเช็คสถานะ (หัวใจหลักที่แก้ให้) ---
   const getSensorStatus = useCallback((sensor) => {
-    if (!sensor.last_seen) return 'offline'
+    // ถ้าไม่มีค่าอุณหภูมิเลย ให้ Offline
+    if (sensor.temp === null || sensor.temp === undefined) return 'offline'
+
+    // ลองดึงเวลาจากชื่อคอลัมน์ที่เป็นไปได้
+    const timestamp = sensor.last_seen || sensor.updated_at || sensor.last_update
     
+    // ถ้าไม่มีเวลาเลย แต่มีอุณหภูมิ (แปลว่า API เพิ่งเขียนค่าเข้ามา) ให้ Online ไว้ก่อน
+    if (!timestamp) return sensor.temp > ALERT_THRESHOLD ? 'critical' : 'normal'
+
     const now = new Date().getTime()
-    const lastSeen = new Date(sensor.last_seen).getTime()
+    const lastSeen = new Date(timestamp).getTime()
     const diff = Math.abs(now - lastSeen)
     
-    // เช็คว่าต่างกันไม่เกิน 15 นาที หรือ ต่างกันประมาณ 7 ชม. (แต่ไม่เกิน 15 นาทีจากจุดนั้น)
-    const TZ_OFFSET = 7 * 60 * 60 * 1000 // 7 ชั่วโมง
+    // เช็คทั้งเวลาปกติ และ Offset 7 ชม.
+    const TZ_OFFSET = 7 * 60 * 60 * 1000
     const isOnline = diff < OFFLINE_THRESHOLD || Math.abs(diff - TZ_OFFSET) < OFFLINE_THRESHOLD
 
     if (!isOnline) return 'offline'
@@ -154,8 +161,8 @@ function Dashboard({ onLogout }) {
     fetchData()
 
     const channel = supabase.channel('realtime-firewatch')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sensors' }, (p) => {
-        setSensors(prev => prev.map(s => s.id === p.new.id ? p.new : s))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sensors' }, (p) => {
+        if (p.eventType === 'UPDATE') setSensors(prev => prev.map(s => s.id === p.new.id ? p.new : s))
         setLastUpdate(new Date())
       }).subscribe()
 
