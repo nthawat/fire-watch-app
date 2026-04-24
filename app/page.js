@@ -13,18 +13,16 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 
-// -------------------------------------------------------
 // ค่าคงที่
-// -------------------------------------------------------
+
 const ALERT_THRESHOLD = 40;
-const OFFLINE_THRESHOLD = 5 * 60 * 1000; // 5 นาที
+const OFFLINE_THRESHOLD = 15 * 60 * 1000;
 const MAP_CENTER = [13.0, 101.0];
 const MAP_ZOOM = 6;
 const DASHBOARD_PASSWORD = "firewatch2025";
 
-// -------------------------------------------------------
 // หน้า Login
-// -------------------------------------------------------
+
 function LoginPage({ onLogin }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
@@ -135,9 +133,8 @@ function LoginPage({ onLogin }) {
   );
 }
 
-// -------------------------------------------------------
 // กราฟประวัติ (Chart.js)
-// -------------------------------------------------------
+
 function HistoryChart({ logs }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
@@ -222,9 +219,8 @@ function HistoryChart({ logs }) {
   );
 }
 
-// -------------------------------------------------------
 // Dashboard หลัก
-// -------------------------------------------------------
+
 function Dashboard({ onLogout }) {
   const [sensors, setSensors] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -369,6 +365,7 @@ function Dashboard({ onLogout }) {
   }, []);
 
   // ดึงข้อมูล + Subscribe
+
   useEffect(() => {
     const fetchAll = async () => {
       const { data: s } = await supabase.from("sensors").select("*");
@@ -770,9 +767,8 @@ function Dashboard({ onLogout }) {
   );
 }
 
-// -------------------------------------------------------
 // Root — จัดการ Auth
-// -------------------------------------------------------
+
 export default function FireWatchApp() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checking, setChecking] = useState(true);
