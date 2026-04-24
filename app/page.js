@@ -1,8 +1,10 @@
 'use client'
 
 /**
- * 🛰️ FIREWATCH ULTIMATE V2.6 
- * Force Online Logic - แก้ปัญหาหมุดเทาจาก Timezone 100%
+ * - FIREWATCH ULTIMATE V2.8 - NECROMANCER EDITION
+ * - No Login: เข้าหน้า Dashboard ได้ทันทีไม่ต้องใส่รหัส
+ * - Force Online: หมุดเขียวตลอดกาลถ้ามีข้อมูลอุณหภูมิ
+ * - Bangkok Timezone: แสดงเวลาไทย GMT+7 ทั้งระบบ
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react'
@@ -12,50 +14,6 @@ import { supabase } from '../lib/supabase'
 const ALERT_THRESHOLD = 40
 const MAP_CENTER = [13.0, 101.0]
 const MAP_ZOOM = 6
-const DASHBOARD_PASSWORD = 'firewatch2025'
-
-// --- Component: LoginPage ---
-function LoginPage({ onLogin }) {
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState(false)
-  const [shake, setShake] = useState(false)
-
-  const handleSubmit = () => {
-    if (password === DASHBOARD_PASSWORD) {
-      localStorage.setItem('fw_auth', 'true')
-      onLogin()
-    } else {
-      setError(true); setShake(true)
-      setTimeout(() => setShake(false), 500)
-    }
-  }
-
-  return (
-    <div style={{ minHeight: '100vh', background: '#0a0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Sarabun', sans-serif" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
-        @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }
-      `}</style>
-      <div style={{ background: '#0d1424', border: '1px solid #1e2d42', borderRadius: 16, padding: '40px 36px', width: 340, animation: shake ? 'shake 0.4s ease' : 'none' }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>🔥</div>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, fontWeight: 700, color: '#f97316' }}>FIREWATCH</div>
-          <div style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>NECROMANCER PRODUCTION</div>
-        </div>
-        <input
-          type="password" value={password}
-          onChange={(e) => { setPassword(e.target.value); setError(false) }}
-          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          placeholder="รหัสผ่านเข้าถึงระบบ"
-          style={{ width: '100%', padding: '12px 14px', background: '#111827', border: `1px solid ${error ? '#ef4444' : '#1e2d42'}`, borderRadius: 8, color: '#e2e8f0', fontSize: 14, outline: 'none', marginBottom: 12, boxSizing: 'border-box' }}
-        />
-        <button onClick={handleSubmit} style={{ width: '100%', padding: 12, background: '#f97316', border: 'none', borderRadius: 8, color: 'white', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-          ACTIVATE DASHBOARD
-        </button>
-      </div>
-    </div>
-  )
-}
 
 // --- Component: HistoryChart ---
 function HistoryChart({ logs }) {
@@ -84,8 +42,8 @@ function HistoryChart({ logs }) {
   return <div style={{ height: 160 }}><canvas ref={canvasRef} /></div>
 }
 
-// --- Dashboard หลัก ---
-function Dashboard({ onLogout }) {
+// --- Main Dashboard Component ---
+export default function FireWatchApp() {
   const [sensors, setSensors] = useState([])
   const [logs, setLogs] = useState([])
   const [selectedSensor, setSelectedSensor] = useState(null)
@@ -97,10 +55,11 @@ function Dashboard({ onLogout }) {
   const mapInstanceRef = useRef(null)
   const markersRef = useRef({})
 
-  // 🔥 ฟังก์ชันเช็คสถานะ (แก้หมุดเทา): ถ้ามี Temp = เขียวทันที
+  // 🔥 เช็คแค่ว่ามี Temp ไหม ถ้ามี = เขียว (No Heartbeat Timeout)
   const getSensorStatus = useCallback((sensor) => {
-    if (sensor.temp === null || sensor.temp === undefined) return 'offline'
-    return sensor.temp > ALERT_THRESHOLD ? 'critical' : 'normal'
+    const t = sensor.temp ?? sensor.temperature ?? sensor.Temp
+    if (t === null || t === undefined) return 'offline'
+    return t > ALERT_THRESHOLD ? 'critical' : 'normal'
   }, [])
 
   const updateMarkers = useCallback((sensorList) => {
@@ -108,11 +67,12 @@ function Dashboard({ onLogout }) {
     const L = window.L
     sensorList.forEach((sensor) => {
       const status = getSensorStatus(sensor)
+      const t = sensor.temp ?? sensor.temperature ?? sensor.Temp
       const color = status === 'offline' ? '#64748b' : status === 'critical' ? '#ef4444' : '#22c55e'
       const html = `
         <div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center">
           <div style="width:32px;height:32px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px ${color}66;z-index:2;border:2px solid rgba(255,255,255,0.2)">
-            <span style="color:white;font-size:9px;font-weight:700">${status === 'offline' ? 'OFF' : Math.round(sensor.temp) + '°'}</span>
+            <span style="color:white;font-size:9px;font-weight:700">${status === 'offline' ? 'OFF' : Math.round(t) + '°'}</span>
           </div>
           ${status === 'critical' ? `<div style="position:absolute;width:44px;height:44px;border-radius:50%;border:2px solid ${color};animation:pulse 1.2s infinite"></div>` : ''}
         </div>`
@@ -156,21 +116,23 @@ function Dashboard({ onLogout }) {
         setLastUpdate(new Date())
       }).subscribe()
 
-    const hb = setInterval(() => setSensors(prev => [...prev]), 30000)
-    return () => { supabase.removeChannel(channel); clearInterval(hb) }
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   useEffect(() => { if (!loading) updateMarkers(sensors) }, [sensors, loading, updateMarkers])
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#0a0f1e', color: '#e2e8f0', fontFamily: "'Sarabun', sans-serif", overflow: 'hidden' }}>
-      <style>{`@keyframes pulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.6); opacity: 0; } }`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
+        @keyframes pulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.6); opacity: 0; } }
+      `}</style>
+      
       <aside style={{ width: 300, background: '#0d1424', borderRight: '1px solid #1e2d42', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: 20, borderBottom: '1px solid #1e2d42' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ color: '#f97316', fontWeight: 700 }}>FIREWATCH LIVE 🟢</div>
-            <button onClick={onLogout} style={{ background: 'none', border: '1px solid #1e2d42', color: '#475569', fontSize: 10, padding: '4px 8px', borderRadius: 4, cursor: 'pointer' }}>LOGOUT</button>
-          </div>
+          <div style={{ color: '#f97316', fontWeight: 700, fontSize: 16 }}>FIREWATCH LIVE 🟢</div>
+          <div style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>NECROMANCER MONITORING STATION</div>
+          
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 20 }}>
             <div style={{ background: '#111827', padding: 12, borderRadius: 10, border: '1px solid #1e2d42' }}>
               <div style={{ fontSize: 9, color: '#64748b' }}>ACTIVE</div>
@@ -184,8 +146,8 @@ function Dashboard({ onLogout }) {
         </div>
 
         <nav style={{ display: 'flex' }}>
-          <div onClick={() => setActiveTab('sensors')} style={{ flex: 1, padding: 15, textAlign: 'center', fontSize: 12, cursor: 'pointer', color: activeTab === 'sensors' ? '#f97316' : '#475569', borderBottom: `2px solid ${activeTab === 'sensors' ? '#f97316' : 'transparent'}` }}>SENSORS</div>
-          <div onClick={() => setActiveTab('history')} style={{ flex: 1, padding: 15, textAlign: 'center', fontSize: 12, cursor: 'pointer', color: activeTab === 'history' ? '#f97316' : '#475569', borderBottom: `2px solid ${activeTab === 'history' ? '#f97316' : 'transparent'}` }}>HISTORY</div>
+          <div onClick={() => setActiveTab('sensors')} style={{ flex: 1, padding: 15, textAlign: 'center', fontSize: 12, cursor: 'pointer', color: activeTab === 'sensors' ? '#f97316' : '#475569', borderBottom: `2px solid ${activeTab === 'sensors' ? '#f97316' : 'transparent'}`, fontWeight: 600 }}>SENSORS</div>
+          <div onClick={() => setActiveTab('history')} style={{ flex: 1, padding: 15, textAlign: 'center', fontSize: 12, cursor: 'pointer', color: activeTab === 'history' ? '#f97316' : '#475569', borderBottom: `2px solid ${activeTab === 'history' ? '#f97316' : 'transparent'}`, fontWeight: 600 }}>HISTORY</div>
         </nav>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: 15 }}>
@@ -194,8 +156,8 @@ function Dashboard({ onLogout }) {
               const status = getSensorStatus(s); const color = status === 'offline' ? '#475569' : status === 'critical' ? '#ef4444' : '#22c55e'
               return (
                 <div key={s.id} onClick={() => { mapInstanceRef.current.flyTo([s.lat, s.lng], 10); setSelectedSensor(s); setActiveTab('history') }} style={{ background: '#111827', padding: 15, borderRadius: 12, marginBottom: 10, cursor: 'pointer', border: '1px solid #1e2d42' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>{s.name}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>{s.name}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: 22, fontWeight: 700, color }}>{s.temp?.toFixed(1)}°C</div>
                     <div style={{ fontSize: 9, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: color + '11', color, border: `1px solid ${color}44` }}>{status.toUpperCase()}</div>
                   </div>
@@ -206,16 +168,16 @@ function Dashboard({ onLogout }) {
             <div>
               {selectedSensor ? (
                 <>
-                  <div style={{ fontSize: 13, color: '#f97316', fontWeight: 700, marginBottom: 10 }}>{selectedSensor.name}</div>
+                  <div style={{ fontSize: 13, color: '#f97316', fontWeight: 700, marginBottom: 15 }}>{selectedSensor.name}</div>
                   <HistoryChart logs={logs.filter(l => l.sensor_id === selectedSensor.id).slice(-24)} />
                 </>
-              ) : <div style={{ textAlign: 'center', color: '#475569', marginTop: 40, fontSize: 12 }}>SELECT A SENSOR</div>}
+              ) : <div style={{ textAlign: 'center', color: '#475569', marginTop: 40, fontSize: 12 }}>SELECT A SENSOR TO VIEW LOGS</div>}
             </div>
           )}
         </div>
         
         <div style={{ padding: 15, background: '#0a0f1e', fontSize: 10, color: '#334155', borderTop: '1px solid #1e2d42' }}>
-          LAST UPDATE: {lastUpdate?.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })}
+          LAST SYNC: {lastUpdate?.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })}
         </div>
       </aside>
 
@@ -223,17 +185,11 @@ function Dashboard({ onLogout }) {
         <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
         <div style={{ position: 'absolute', top: 25, left: 25, zIndex: 1000, background: '#0d1424cc', padding: '12px 20px', borderRadius: 12, border: '1px solid #1e2d42', backdropFilter: 'blur(10px)' }}>
           <div style={{ fontSize: 13, fontWeight: 700 }}>FIREWATCH DASHBOARD</div>
-          <div style={{ fontSize: 10, color: '#22c55e' }}>● SYSTEM LIVE</div>
+          <div style={{ fontSize: 10, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 6 }}>
+             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }}></span> SYSTEM LIVE
+          </div>
         </div>
       </main>
     </div>
   )
-}
-
-export default function FireWatchApp() {
-  const [auth, setAuth] = useState(false); const [checking, setChecking] = useState(true)
-  useEffect(() => { if (localStorage.getItem('fw_auth') === 'true') setAuth(true); setChecking(false) }, [])
-  if (checking) return null
-  if (!auth) return <LoginPage onLogin={() => setAuth(true)} />
-  return <Dashboard onLogout={() => { localStorage.removeItem('fw_auth'); setAuth(false) }} />
 }
