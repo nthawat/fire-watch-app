@@ -1,10 +1,11 @@
 'use client'
 
 /**
- * - FIREWATCH ULTIMATE V2.8 - NECROMANCER EDITION
+ * - FIREWATCH ULTIMATE V2.9 - NECROMANCER EDITION
  * - No Login: เข้าหน้า Dashboard ได้ทันทีไม่ต้องใส่รหัส
  * - Force Online: หมุดเขียวตลอดกาลถ้ามีข้อมูลอุณหภูมิ
  * - Bangkok Timezone: แสดงเวลาไทย GMT+7 ทั้งระบบ
+ * - Live Clock: เวลานับถอยหลัง/เดินตลอดวินาทีต่อวินาที
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react'
@@ -50,10 +51,19 @@ export default function FireWatchApp() {
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState(null)
   const [activeTab, setActiveTab] = useState('sensors')
+  
+  // 🕒 1. เพิ่ม State สำหรับนาฬิกา
+  const [clock, setClock] = useState(new Date())
 
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef({})
+
+  // 🕒 2. สั่งให้นาฬิกาเดินทุก 1 วินาที
+  useEffect(() => {
+    const t = setInterval(() => setClock(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
 
   // 🔥 เช็คแค่ว่ามี Temp ไหม ถ้ามี = เขียว (No Heartbeat Timeout)
   const getSensorStatus = useCallback((sensor) => {
@@ -176,8 +186,9 @@ export default function FireWatchApp() {
           )}
         </div>
         
+        {/* 🕒 3. เปลี่ยน LAST SYNC ให้ใช้นาฬิกาวิ่งตลอด */}
         <div style={{ padding: 15, background: '#0a0f1e', fontSize: 10, color: '#334155', borderTop: '1px solid #1e2d42' }}>
-          LAST SYNC: {lastUpdate?.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })}
+          LAST SYNC: {clock.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })}
         </div>
       </aside>
 
