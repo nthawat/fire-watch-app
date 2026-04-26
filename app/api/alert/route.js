@@ -8,7 +8,7 @@ export async function POST(request) {
   try {
     body = await request.json();
   } catch (err) {
-    // ถ้าส่งมาไม่ใช่ JSON หรือ Body ว่าง (เช่น ตอน LINE ทักมาเช็ค) ให้ตอบ 200 ไปก่อน
+                                                    //   ถ้าส่งมาไม่ใช่ JSON หรือ Body ว่าง (เช่น ตอน LINE ทักมาเช็ค) ให้ตอบ 200 ไปก่อน
     return Response.json(
       { success: true, message: "Keep-alive" },
       { status: 200 },
@@ -17,8 +17,8 @@ export async function POST(request) {
 
   const { sensorName, temperature, lat, lng } = body;
 
-  //ถ้าไม่มีข้อมูลเซนเซอร์ (เช่น ตอนกดปุ่ม Verify ใน LINE Console)
-  // ให้ตอบ 200 กลับไปทันทีเพื่อให้ Verify ผ่าน
+                                                      //  ถ้าไม่มีข้อมูลเซนเซอร์ (เช่น ตอนกดปุ่ม Verify ใน LINE Console)
+                                                      // ให้ตอบ 200 กลับไปทันทีเพื่อให้ Verify ผ่าน
   if (!sensorName || temperature === undefined) {
     return Response.json(
       {
@@ -29,7 +29,7 @@ export async function POST(request) {
     );
   }
 
-  // --- เริ่มกระบวนการส่ง LINE Alert ของจริง ---
+                                                                // เริ่มกระบวนการส่ง LINE Alert 
   const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   const lineUserId = process.env.MY_LINE_USER_ID;
 
@@ -41,14 +41,14 @@ export async function POST(request) {
     );
   }
 
-  // สร้างข้อความแจ้งเตือน
+                                                                // สร้างข้อความแจ้งเตือน
   const alertMessage = [
     "🔥 แจ้งเตือนไฟป่า!",
     "",
     `📍 สถานที่: ${sensorName}`,
     `🌡️ อุณหภูมิ: ${temperature}°C`,
     `📌 พิกัด: ${lat}, ${lng}`,
-    `🗺️ แผนที่: https://www.google.com/maps?q=${lat},${lng}`, // ปรับลิงก์ให้กดได้จริง
+    `🗺️ แผนที่: https://www.google.com/maps?q=${lat},${lng}`, // สามรถปรับลิงก์ให้กดได้จริง
     "",
     "⚠️ อุณหภูมิเกิน 40°C กรุณาตรวจสอบด่วน!",
   ].join("\n");

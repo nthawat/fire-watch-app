@@ -1,7 +1,6 @@
 /**
  * GET /api/sync-weather
- *
- * ดึงอุณหภูมิจริงจาก Open-Meteo API (ฟรี ไม่ต้อง API Key)
+ * ดึงอุณหภูมิจริงจาก Open-Meteo API 
  * แล้วอัปเดตค่า temp และ last_seen ในตาราง sensors ของ Supabase
  *
  * วิธีใช้:
@@ -11,7 +10,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-// ใช้ Service Role Key เพื่อ bypass RLS (อัปเดตได้จาก server)
+//        ใช้ Service Role Key เพื่อ bypass RLS (อัปเดตได้จาก server)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -19,7 +18,7 @@ const supabase = createClient(
 
 export async function GET() {
   try {
-    // 1. ดึงรายการเซนเซอร์ทั้งหมด
+    //    ดึงรายการเซนเซอร์ทั้งหมด
     const { data: sensors, error: fetchError } = await supabase
       .from('sensors')
       .select('id, name, lat, lng')
@@ -29,14 +28,14 @@ export async function GET() {
       return Response.json({ success: true, message: 'No sensors found', updated: 0 })
     }
 
-    // 2. สร้าง URL แบบ batch — Open-Meteo รับหลายพิกัดในครั้งเดียว
+    //    สร้าง URL แบบ batch — Open-Meteo รับหลายพิกัดในครั้งเดียว
     //    แต่ต้องเรียกทีละตัวเพราะแต่ละพิกัดต่างกัน
     const results = await Promise.allSettled(
       sensors.map(async (sensor) => {
         const url = new URL('https://api.open-meteo.com/v1/forecast')
         url.searchParams.set('latitude', sensor.lat)
         url.searchParams.set('longitude', sensor.lng)
-        url.searchParams.set('current', 'temperature_2m')  // อุณหภูมิปัจจุบัน ณ ความสูง 2 เมตร
+        url.searchParams.set('current', 'temperature_2m')           // อุณหภูมิปัจจุบัน ณ ความสูง 2 เมตร
         url.searchParams.set('timezone', 'Asia/Bangkok')
 
         const res = await fetch(url.toString(), { next: { revalidate: 0 } })
@@ -49,11 +48,11 @@ export async function GET() {
           throw new Error(`No temperature data for sensor ${sensor.id}`)
         }
 
-        // 3. อัปเดต temp และ last_seen ใน Supabase
+        //            อัปเดต temp และ last_seen ใน Supabase
         const { error: updateError } = await supabase
           .from('sensors')
           .update({
-            temp: Math.round(temp * 10) / 10,  // ปัดทศนิยม 1 ตำแหน่ง
+            temp: Math.round(temp * 10) / 10,               // ปัดทศนิยม 1 ตำแหน่ง
             status: temp > 40 ? 'critical' : 'normal',
             last_seen: new Date().toISOString(),
           })
@@ -65,7 +64,6 @@ export async function GET() {
       })
     )
 
-    // 4. สรุปผล
     const succeeded = results.filter((r) => r.status === 'fulfilled').map((r) => r.value)
     const failed = results.filter((r) => r.status === 'rejected').map((r) => r.reason?.message)
 
