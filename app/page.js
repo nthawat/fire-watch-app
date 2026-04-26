@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 
 const Map = dynamic(() => import("../components/Map"), { ssr: false });
 
-// --- Component: กราฟเส้น ---
+//  Component: กราฟเส้น
 function HistoryChart({ logs }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
@@ -89,13 +89,13 @@ export default function FireWatchApp() {
   const [activeTab, setActiveTab] = useState("sensors");
   const [clock, setClock] = useState(new Date());
 
-  // 1. นาฬิกา Real-time
+  // นาฬิกา Real-time
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // 2. โหลดข้อมูลจาก Supabase
+  // โหลดข้อมูลจาก Supabase
   const loadData = async () => {
     const { data: s } = await supabase.from("sensors").select("*");
     setSensors(s || []);
@@ -447,9 +447,7 @@ export default function FireWatchApp() {
             backdropFilter: "blur(8px)",
           }}
         >
-          <div style={{ fontSize: 13, fontWeight: 700 }}>
-            NECROMANCER STATION
-          </div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>Dashboard</div>
         </div>
       </main>
     </div>
