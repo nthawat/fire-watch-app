@@ -10,7 +10,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-//        ใช้ Service Role Key เพื่อ bypass RLS (อัปเดตได้จาก server)
+//        ใช้ Service Role Key เพื่อ bypass RLS อัปเดตได้จาก server
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -37,22 +37,22 @@ export async function GET() {
         url.searchParams.set('longitude', sensor.lng)
         url.searchParams.set('current', 'temperature_2m')           // อุณหภูมิปัจจุบัน ณ ความสูง 2 เมตร
         url.searchParams.set('timezone', 'Asia/Bangkok')
-
+                                                          // สั่งให้โปรแกรม "ออกไปดึงข้อมูล" จาก URL ของ Weather API
         const res = await fetch(url.toString(), { next: { revalidate: 0 } })
-        if (!res.ok) throw new Error(`Weather API failed for sensor ${sensor.id}`)
+        if (!res.ok) throw new Error(`Weather API failed for sensor ${sensor.id}`)  // ตรวจสอบว่า API ตอบกลับมา สำเร็จ หรือไม่
 
-        const data = await res.json()
-        const temp = data?.current?.temperature_2m
+        const data = await res.json()  // แปลงข้อมูลที่ได้จากตัวหนังสือ String ให้กลายเป็น Object 
+        const temp = data?.current?.temperature_2m   // แสดงค่า อุณหภูมิ ออกมา
 
-        if (temp === undefined || temp === null) {
+        if (temp === undefined || temp === null) {     // ถ้าไม่ได้ค่าตัวเลขกลับมาจริงๆ ให้หยุดทำงาน
           throw new Error(`No temperature data for sensor ${sensor.id}`)
         }
 
-        //            อัปเดต temp และ last_seen ใน Supabase
+                                                                // อัปเดต temp และ last_seen ใน Supabase
         const { error: updateError } = await supabase
           .from('sensors')
           .update({
-            temp: Math.round(temp * 10) / 10,               // ปัดทศนิยม 1 ตำแหน่ง
+            temp: Math.round(temp * 10) / 10,                   // ปัดทศนิยม 1 ตำแหน่ง
             status: temp > 40 ? 'critical' : 'normal',
             last_seen: new Date().toISOString(),
           })

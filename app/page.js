@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import dynamic from "next/dynamic";
 
+// โหลดคอมโพเนนต์แผนที่เฉพาะตอนจำเป็น เพื่อให้หน้าเว็บเริ่มต้นโหลดได้เร็วขึ้น (Optimization)
 const Map = dynamic(() => import("../components/Map"), { ssr: false });
 
 //  Component: กราฟเส้น
@@ -11,23 +12,27 @@ function HistoryChart({ logs }) {
   const chartRef = useRef(null);
   useEffect(() => {
     // ถ้าไม่มีข้อมูล Logs จะไม่วาดกราฟ
-    if (!canvasRef.current || logs.length === 0) return;
+    if (!canvasRef.current || logs.length === 0) return; // รับข้อมูลประวัติ (logs) มาแสดงผล
     const render = () => {
-      if (chartRef.current) chartRef.current.destroy();
+      if (chartRef.current) chartRef.current.destroy(); // ถ้ามีกราฟเก่าค้างอยู่ ให้ลบทิ้งก่อน (ป้องกันกราฟซ้อน)
       chartRef.current = new window.Chart(canvasRef.current, {
-        type: "line",
+        // สร้างกราฟใหม่
+        type: "line", // กำหนดเป็นกราฟเส้น
         data: {
-          labels: logs.map((l) =>
-            new Date(l.recorded_at).toLocaleTimeString("th-TH", {
-              hour: "2-digit",
-              minute: "2-digit",
-              timeZone: "Asia/Bangkok",
-            }),
+          labels: logs.map(
+            (
+              l, // ดึงเวลาจาก logs มาเป็นแถบด้านล่าง
+            ) =>
+              new Date(l.recorded_at).toLocaleTimeString("th-TH", {
+                hour: "2-digit",
+                minute: "2-digit",
+                timeZone: "Asia/Bangkok",
+              }),
           ),
           datasets: [
             {
               label: "°C",
-              data: logs.map((l) => l.temp),
+              data: logs.map((l) => l.temp), // ดึงค่าอุณหภูมิมาพล็อตจุด
               borderColor: "#f97316",
               backgroundColor: "rgba(249,115,22,0.1)",
               fill: true,
@@ -36,8 +41,8 @@ function HistoryChart({ logs }) {
           ],
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
+          responsive: true,           // ให้กราฟปรับขนาดตามจอ
+          maintainAspectRatio: false,                       // ให้ยืดหยุ่นตามความสูงที่กำหนด
           plugins: { legend: { display: false } },
           scales: {
             y: { min: 20, grid: { color: "#1e2d42" } },
@@ -45,7 +50,7 @@ function HistoryChart({ logs }) {
           },
         },
       });
-    };
+    };                              // ตรวจสอบว่ามี Library Chart.js หรือยัง ถ้าไม่มีให้โหลดจาก CDN
     if (!window.Chart) {
       const s = document.createElement("script");
       s.src = "https://cdn.jsdelivr.net/npm/chart.js";
